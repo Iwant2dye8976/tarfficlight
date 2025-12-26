@@ -1,0 +1,114 @@
+:root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --border: #e6e9f0;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --primary: #2563eb;
+      --green: #16a34a;
+      --yellow: #facc15;
+      --red: #dc2626;
+      --shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+    }
+
+    body {
+      font-family: Inter, Arial, sans-serif;
+      background: var(--bg);
+      margin: 0;
+      padding: 20px;
+      color: var(--text);
+    }
+
+    h1 {
+      font-size: 22px;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 18px;
+    }
+
+    .section {
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: var(--primary);
+      letter-spacing: 0.5px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 14px 16px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+
+    .label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .value {
+      font-size: 20px;
+      font-weight: 700;
+      word-break: break-word;
+    }
+
+    .value.big {
+      font-size: 26px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge.green {
+      background: #dcfce7;
+      color: var(--green);
+    }
+
+    .badge.yellow {
+      background: #fef9c3;
+      color: #a16207;
+    }
+
+    .badge.red {
+      background: #fee2e2;
+      color: var(--red);
+    }
+
+    #container {
+      height: 360px;
+      border-radius: 14px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      padding: 8px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      background: var(--primary);
+    }

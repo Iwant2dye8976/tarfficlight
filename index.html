@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ERa - RFID Traffic Dashboard</title>
+
+  <script src="https://www.unpkg.com/@eohjsc/era-widget@1.1.3/src/index.js"></script>
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <!-- <script src="script.js"></script> -->
+
+</head>
+
+<body>
+  <!-- HEADER -->
+  <h1>🚦 RFID Traffic Control Dashboard</h1>
+  <div class="subtitle">Real-time monitoring & priority vehicle detection</div>
+
+  <div class="section">
+    <div class="section-title">SYSTEM STATUS</div>
+    <div class="grid">
+      <div class="card">
+        <div class="label">MODE</div>
+        <div class="value big" id="MODE">--</div>
+      </div>
+      <div class="card">
+        <div class="label">CURRENT STATE</div>
+        <div class="value big" id="CURRENT_STATE">--</div>
+      </div>
+      <div class="card">
+        <div class="label">REMAINING TIME (ms)</div>
+        <div class="value big" id="REMAINING_TIME">--</div>
+      </div>
+      <div class="card">
+        <div class="label">PRIORITY</div>
+        <div class="value" id="PRIORITY">--</div>
+      </div>
+      <div class="card">
+        <div class="label">CURRENT MODE</div>
+        <div class="value" id="CURRENT_MODE">--</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIMING CONFIG -->
+  <div class="section">
+    <div class="section-title">TIME CONTROL</div>
+
+    <div class="grid">
+
+      <div class="card">
+        <div class="label">GREEN_DURATION (ms)</div>
+        <input type="range" min="1000" max="60000" step="1000" id="slider_GREEN" oninput="testMode(3000)">
+        <div class="value" id="val_GREEN">--</div>
+      </div>
+
+      <div class="card">
+        <div class="label">YELLOW_DURATION (ms)</div>
+        <input type="range" min="1000" max="10000" step="500" id="slider_YELLOW">
+        <div class="value" id="val_YELLOW">--</div>
+      </div>
+
+      <div class="card">
+        <div class="label">RED_DURATION (ms)</div>
+        <input type="range" min="1000" max="60000" step="1000" id="slider_RED">
+        <div class="value" id="val_RED">--</div>
+      </div>
+
+      <div class="card">
+        <div class="label">PRIORITY_DURATION (ms)</div>
+        <input type="range" min="1000" max="20000" step="1000" id="slider_PRIORITY">
+        <div class="value" id="val_PRIORITY">--</div>
+      </div>
+
+      <div class="card">
+        <div class="label">YIELD_YELLOW (ms)</div>
+        <input type="range" min="500" max="5000" step="500" id="slider_YIELD">
+        <div class="value" id="val_YIELD">--</div>
+      </div>
+
+      <div class="card">
+        <div class="label">FLASH_MS (ms)</div>
+        <input type="range" min="200" max="2000" step="100" id="slider_FLASH">
+        <div class="value" id="val_FLASH">--</div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- RFID -->
+  <div class="section">
+    <div class="section-title">RFID STATISTICS</div>
+    <div class="grid">
+      <div class="card">
+        <div class="label">LAST UID</div>
+        <div class="value" id="LAST_UID">--</div>
+      </div>
+      <div class="card">
+        <div class="label">LAST TYPE</div>
+        <div class="value" id="LAST_TYPE">--</div>
+      </div>
+      <div class="card">
+        <div class="label">TOTAL SCANS</div>
+        <div class="value" id="TOTAL_SCANS">--</div>
+      </div>
+      <div class="card">
+        <div class="label">UNIQUE CARDS</div>
+        <div class="value" id="UNIQUE_CARDS">--</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHART -->
+  <div class="section">
+    <div class="section-title">LIVE REMAINING TIME</div>
+    <div id="container"></div>
+  </div>
+
+
+  <button id="btn" onclick="testMode(3000)">TEST MODE</button>
+  <div id="TEST"></div>
+  <script>
+    let remainingValue = 0;
+    let chart = null;
+
+    const btn2 = document.getElementById('btn');
+    // ====== 1) Map đúng V-pin theo ảnh ======
+    const PIN = {
+      MODE: "MODE",
+      PRIORITY: "PRIORITY",
+      GREEN_DURATION: "GREEN_DURATION",
+      YELLOW_DURATION: "YELLOW_DURATION",
+      PRIORITY_DURATION: "PRIORITY_DURATION",
+      YIELD_YELLOW: "YIELD_YELLOW",
+      FLASH_MS: "FLASH_MS",
+      RED_DURATION: "RED_DURATION",
+      CURRENT_STATE: "CURRENT_STATE",
+      CURRENT_MODE: "CURRENT_MODE",
+      REMAINING_TIME: "REMAINING_TIME",
+      LAST_UID: "LAST_UID",
+      LAST_TYPE: "LAST_TYPE",
+      TOTAL_SCANS: "TOTAL_SCANS",
+      UNIQUE_CARDS: "UNIQUE_CARDS",
+    };
+
+    // pin -> configId (id nội bộ của era-widget)
+    const idByPin = {};
+    let actions = [];
+    let configMode = null, configPriority = null, configGreenD = null, configYellowD = null, configPriorityD = null, configYieldYellow = null, configFlashMs = null, configCState = null, configCMode = null, configRTime = null, configRedD = null,
+      configLastUID = null, configLastType = null, configTotalScans = null, configUniqueCards = null;
+    const btn = document.getElementById('btn');
+    const eraWidget = new EraWidget();
+    eraWidget.init({
+      needRealtimeConfigs: true,         /* Cần giá trị hiện thời */
+      needHistoryConfigs: true,          /* Cần giá trị lịch sử */
+      needActions: true,                 /* Cần các hành động (ví dụ Bật/Tắt đèn) */
+      maxRealtimeConfigsCount: 20,        /* Số lượng tối đa giá trị hiện thời */
+      maxHistoryConfigsCount: 20,         /* Số lượng tối đa giá trị lịch sử */
+      maxActionsCount: 20,                /* Số lượng tối đa các hành động có thể kích hoạt */
+      minRealtimeConfigsCount: 0,        /* Số lượng tối thiểu giá trị hiện thời */
+      minHistoryConfigsCount: 0,         /* Số lượng tối thiểu giá trị lịch sử */
+      minActionsCount: 0,                /* Số lượng tối thiểu hành động */
+
+      /* Hàm callback được gọi khi có cấu hình được nhận từ server */
+      onConfiguration: (configuration) => {
+        // Lưu các cấu hình khi nhận được từ widget
+        configMode = configuration.realtime_configs[0];
+        configPriority = configuration.realtime_configs[1];
+        configGreenD = configuration.realtime_configs[2];
+        configYellowD = configuration.realtime_configs[3];
+        configPriorityD = configuration.realtime_configs[4];
+        configYieldYellow = configuration.realtime_configs[5];
+        configFlashMs = configuration.realtime_configs[6];
+        configCState = configuration.realtime_configs[7];
+        configCMode = configuration.realtime_configs[8];
+        configRTime = configuration.realtime_configs[9];
+        configRedD = configuration.realtime_configs[10];
+        configLastUID = configuration.realtime_configs[11];
+        configLastType = configuration.realtime_configs[12];
+        configTotalScans = configuration.realtime_configs[13];
+        configUniqueCards = configuration.realtime_configs[14];
+
+        configs = configuration.realtime_configs;
+
+        actions = configuration.actions;
+      }, onValues: (values) => {
+        const valueMode = values[configMode.id].value;
+        const valuePriority = values[configPriority.id].value;
+        const valueGreenD = values[configGreenD.id].value;
+        const valueYellowD = values[configYellowD.id].value;
+        const valuePriorityD = values[configPriorityD.id].value;
+        const valueYieldYellow = values[configYieldYellow.id].value;
+        const valueFlashMs = values[configFlashMs.id].value;
+        const valueCState = values[configCState.id].value;
+        const valueCMode = values[configCState.id].value;
+        const valueRTime = values[configRTime.id].value;
+        const valueRedD = values[configRedD.id].value;
+        const valueLastUID = values[configLastUID.id].value;
+        const valueLastType = values[configLastType.id].value;
+        const valueTotalScans = values[configTotalScans.id].value;
+        const valueUniqueCards = values[configUniqueCards.id].value;
+
+        setText("MODE", valueMode);
+        setText("PRIORITY", valuePriority);
+
+        setText("val_GREEN", valueGreenD);
+        setText("val_YELLOW", valueYellowD);
+        setText("val_PRIORITY", valuePriorityD);
+        setText("val_YIELD", valueYieldYellow);
+        setText("val_FLASH", valueFlashMs);
+        setText("val_RED", valueRedD);
+
+        setText("CURRENT_STATE", valueCState);
+        setText("CURRENT_MODE", valueCMode);
+        setText("REMAINING_TIME", valueRTime);
+
+        setText("LAST_UID", valueLastUID);
+        setText("LAST_TYPE", valueLastType);
+        setText("TOTAL_SCANS", valueTotalScans);
+        setText("UNIQUE_CARDS", valueUniqueCards);
+        // setText("TEST", JSON.stringify(configs));
+        remainingValue = valueRTime;
+      }
+
+    });
+
+    btn2.addEventListener('click', () => {
+      eraWidget.triggerAction(actions[0]?.action, null, { 'value': 2 }, false);
+    });
+
+    /* ====== SLIDER HANDLER ====== */
+    function bindSlider(sliderId, valueId, actionIndex) {
+      const slider = document.getElementById(sliderId);
+      const value = document.getElementById(valueId);
+
+      slider.addEventListener("input", () => {
+        const v = Number(slider.value);
+        value.textContent = v;
+
+        eraWidget.triggerAction(
+          actions[actionIndex]?.action,
+          null,
+          { value: v },
+          false
+        );
+      });
+    }
+
+    bindSlider("slider_GREEN", "val_GREEN", 2);
+    bindSlider("slider_YELLOW", "val_YELLOW", 3);
+    bindSlider("slider_RED", "val_RED", 4);
+    bindSlider("slider_PRIORITY", "val_PRIORITY", 5);
+    bindSlider("slider_YIELD", "val_YIELD", 6);
+    bindSlider("slider_FLASH", "val_FLASH", 7);
+
+    function setText(domId, val) {
+      const el = document.getElementById(domId);
+      if (!el) return;
+      el.textContent = (val === null || typeof val === "undefined") ? "--" : String(val);
+    }
+
+    eraWidget.ready();
+
+    // ====== 2) Chart REMAINING_TIME ======
+    chart = Highcharts.chart('container', {
+      chart: { type: 'spline' },
+      title: { text: 'REMAINING_TIME (ms)' },
+      time: { useUTC: false },
+      xAxis: { type: 'datetime' },
+      yAxis: { min: 0 },
+      series: [{
+        name: 'Remaining Time',
+        data: []
+      }]
+    });
+
+    setInterval(() => {
+      const x = Date.now();
+      chart.series[0].addPoint(
+        [x, remainingValue],
+        true,
+        chart.series[0].data.length > 30
+      );
+    }, 1000);
+
+  </script>
+</body>
+
+</html>
